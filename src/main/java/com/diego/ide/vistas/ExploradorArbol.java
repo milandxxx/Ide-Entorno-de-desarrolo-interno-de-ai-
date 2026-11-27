@@ -35,7 +35,11 @@ public class ExploradorArbol extends TreeGrid<Path> {
         addHierarchyColumn(this::etiqueta).setHeader("Proyecto").setFlexGrow(1);
         setDataProvider(proveedor);
 
-        addExpandListener(evento -> alDesplegar(evento.getItem()));
+        addExpandListener(evento -> {
+            for (Path carpeta : evento.getItems()) {
+                alDesplegar(carpeta);
+            }
+        });
         addItemDoubleClickListener(evento -> {
             Path item = evento.getItem();
             if (!Files.isDirectory(item)) {
