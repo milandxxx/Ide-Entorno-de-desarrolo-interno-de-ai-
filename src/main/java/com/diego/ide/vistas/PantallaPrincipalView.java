@@ -48,8 +48,13 @@ public class PantallaPrincipalView extends VerticalLayout {
     /** Pestana de cada archivo abierto. */
     private final Map<Path, Tab> pestanasDe = new LinkedHashMap<>();
 
+    /** Fin de linea (CRLF o LF) de cada archivo abierto. */
+    private final Map<Path, String> finesDeLinea = new LinkedHashMap<>();
+
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
     private final Span lenguajeActual = new Span("plaintext");
+    private final Span posicion = new Span("1:1");
+    private final Span finLinea = new Span();
     private final Span memoria = new Span();
 
     /** Archivo activo en el editor, o null. */
@@ -122,8 +127,8 @@ public class PantallaPrincipalView extends VerticalLayout {
         archivoAbierto.addClassName("texto-neon");
         lenguajeActual.addClassName("texto-neon");
         memoria.addClassName("texto-neon");
-        HorizontalLayout estado = new HorizontalLayout(archivoAbierto, lenguajeActual,
-                new Span("INS"), new Span("UTF-8"), memoria);
+        HorizontalLayout estado = new HorizontalLayout(archivoAbierto, lenguajeActual, posicion,
+                new Span("INS"), finLinea, new Span("UTF-8"), memoria);
         estado.setWidthFull();
         estado.setAlignItems(FlexComponent.Alignment.CENTER);
         estado.setPadding(false);
@@ -148,7 +153,7 @@ public class PantallaPrincipalView extends VerticalLayout {
                 boton(VaadinIcon.FOLDER_ADD, "Nueva carpeta", this::crearCarpeta),
                 boton(VaadinIcon.FOLDER_OPEN, "Abrir carpeta", this::elegirCarpetaNativa),
                 boton(VaadinIcon.CHECK, "Guardar", this::guardarArchivo),
-                boton(VaadinIcon.DOWNLOAD, "Guardar todo", this::guardarArchivo),
+                boton(VaadinIcon.DOWNLOAD, "Guardar todo", this::guardarTodo),
                 separadorVertical(),
                 configuracion(),
                 boton(VaadinIcon.GLOBE, "Navegador (proximamente)", null),
@@ -461,7 +466,14 @@ public class PantallaPrincipalView extends VerticalLayout {
                 MonacoEditor nuevo = new MonacoEditor();
                 nuevo.setSizeFull();
                 nuevo.setVisible(false);
-                nuevo.abrir(archivos.leer(archivo), lenguajeDe(archivo.toString()));
+                String contenido = archivos.leer(archivo);
+                finesDeLinea.put(archivo, contenido.contains("\r\n") ? "Windows (CRLF)" : "Unix (LF)");
+                nuevo.abrir(contenido, lenguajeDe(archivo.toString()));
+                nuevo.setAlCambiarCursor((linea, columna) -> {
+                    if (archivo.equals(rutaAbierta)) {
+                        posicion.setText(linea + ":" + columna);
+                    }
+                });
                 contenedorEditores.add(nuevo);
                 editores.put(archivo, nuevo);
 
@@ -487,6 +499,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         editores.forEach((ruta, ed) -> ed.setVisible(ruta.equals(archivo)));
         archivoAbierto.setText(archivo.toString());
         lenguajeActual.setText(lenguajeDe(archivo.toString()));
+        finLinea.setText(finesDeLinea.getOrDefault(archivo, ""));
     }
 
     /** Cierra la pestana y el editor de un archivo. */
@@ -499,10 +512,13 @@ public class PantallaPrincipalView extends VerticalLayout {
         if (ed != null) {
             contenedorEditores.remove(ed);
         }
+        finesDeLinea.remove(archivo);
         if (archivo.equals(rutaAbierta)) {
             rutaAbierta = null;
             archivoAbierto.setText("Ningun archivo abierto");
             lenguajeActual.setText("plaintext");
+            finLinea.setText("");
+            posicion.setText("1:1");
             if (!editores.isEmpty()) {
                 Path otro = editores.keySet().iterator().next();
                 pestanas.setSelectedTab(pestanasDe.get(otro));
@@ -521,13 +537,31 @@ public class PantallaPrincipalView extends VerticalLayout {
     }
 
     private void guardarArchivo() {
-        MonacoEditor activo = editorActivo();
-        if (activo == null || rutaAbierta == null) {
+        if (rutaAbierta == null) {
             Notification.show("No hay archivo abierto");
             return;
         }
-        Path archivo = rutaAbierta;
-        activo.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
+        guardar(rutaAbierta);
+    }
+
+    /** Guarda todas las pestanas abiertas. */
+    private void guardarTodo() {
+        if (editores.isEmpty()) {
+            Notification.show("No hay archivos abiertos");
+            return;
+        }
+        for (Path archivo : new ArrayList<>(editores.keySet())) {
+            guardar(archivo);
+        }
+    }
+
+    /** Toma el contenido del editor de ese archivo y lo escribe en disco. */
+    private void guardar(Path archivo) {
+        MonacoEditor ed = editores.get(archivo);
+        if (ed == null) {
+            return;
+        }
+        ed.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
             try {
                 archivos.escribir(archivo, contenido);
                 Notification.show("Guardado: " + archivo.getFileName());

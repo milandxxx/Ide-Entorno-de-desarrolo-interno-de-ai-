@@ -5,6 +5,7 @@ import com.vaadin.flow.component.Tag;
 import com.vaadin.flow.component.html.Div;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 /**
  * Editor de codigo basado en Monaco (el motor de VS Code).
@@ -20,10 +21,25 @@ public class MonacoEditor extends Div {
 
     private String valorInicial = "";
     private String lenguajeInicial = "plaintext";
+    private BiConsumer<Integer, Integer> alCambiarCursor;
 
     public MonacoEditor() {
         setSizeFull();
         getStyle().set("min-height", "300px");
+
+        // El navegador avisa cada vez que el cursor se mueve (linea y columna).
+        getElement().addEventListener("cursor-cambio", evento -> {
+            if (alCambiarCursor != null) {
+                alCambiarCursor.accept(
+                        (int) evento.getEventData().getNumber("event.detail.linea"),
+                        (int) evento.getEventData().getNumber("event.detail.columna"));
+            }
+        }).addEventData("event.detail.linea").addEventData("event.detail.columna");
+    }
+
+    /** Callback que recibe linea y columna cada vez que el cursor cambia. */
+    public void setAlCambiarCursor(BiConsumer<Integer, Integer> callback) {
+        this.alCambiarCursor = callback;
     }
 
     /** Fija el contenido y el lenguaje antes o despues de adjuntar el componente. */
@@ -90,6 +106,11 @@ public class MonacoEditor extends Div {
                     theme: 'vs-dark',
                     automaticLayout: true,
                     minimap: { enabled: false }
+                });
+                el.__editor.onDidChangeCursorPosition(function (e) {
+                    el.dispatchEvent(new CustomEvent('cursor-cambio', {
+                        detail: { linea: e.position.lineNumber, columna: e.position.column }
+                    }));
                 });
             })();
             """;
