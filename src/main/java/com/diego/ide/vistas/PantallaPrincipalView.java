@@ -4,6 +4,8 @@ import com.diego.ide.servicios.ArchivosProyectoService;
 import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -37,6 +39,7 @@ public class PantallaPrincipalView extends VerticalLayout {
     private final TextField rutaProyecto = new TextField("Carpeta del proyecto");
     private final ExploradorArbol explorador;
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
+    private final Span memoria = new Span();
     private final MonacoEditor editor = new MonacoEditor();
 
     /** Ruta absoluta del archivo abierto en el editor, o null. */
@@ -93,8 +96,14 @@ public class PantallaPrincipalView extends VerticalLayout {
                 boton(VaadinIcon.FOLDER_OPEN, "Abrir carpeta", this::elegirCarpetaNativa),
                 boton(VaadinIcon.SAVE, "Guardar", this::guardarArchivo),
                 separadorVertical(),
+                separadorVertical(),
+                configuracion(),
+                boton(VaadinIcon.TOOLS, "Compilar (proximamente)", null),
                 boton(VaadinIcon.PLAY, "Ejecutar (proximamente)", null),
-                boton(VaadinIcon.BUG, "Depurar (proximamente)", null));
+                boton(VaadinIcon.BUG, "Depurar (proximamente)", null),
+                boton(VaadinIcon.DASHBOARD, "Perfilar (proximamente)", null),
+                separadorVertical(),
+                memoria);
 
         TextField buscar = new TextField();
         buscar.setPlaceholder("Buscar (Ctrl+I)");
@@ -103,6 +112,31 @@ public class PantallaPrincipalView extends VerticalLayout {
         herramientas.add(buscar);
         herramientas.getStyle().set("flex-wrap", "wrap");
         return herramientas;
+    }
+
+    /** Selector de configuracion de ejecucion, como "default config" en NetBeans. */
+    private ComboBox<String> configuracion() {
+        ComboBox<String> combo = new ComboBox<>();
+        combo.setItems("default");
+        combo.setValue("default");
+        combo.setWidth("150px");
+        return combo;
+    }
+
+    /** Muestra la memoria que usa la app en MB, y se actualiza cada 2 segundos. */
+    private void actualizarMemoria() {
+        Runtime rt = Runtime.getRuntime();
+        long usadaMb = (rt.totalMemory() - rt.freeMemory()) / 1048576;
+        long totalMb = rt.totalMemory() / 1048576;
+        memoria.setText(usadaMb + "/" + totalMb + " MB");
+    }
+
+    @Override
+    protected void onAttach(AttachEvent evento) {
+        super.onAttach(evento);
+        evento.getUI().setPollInterval(2000);
+        evento.getUI().addPollListener(e -> actualizarMemoria());
+        actualizarMemoria();
     }
 
     private Div separadorVertical() {
