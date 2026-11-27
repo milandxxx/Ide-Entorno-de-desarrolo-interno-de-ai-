@@ -10,7 +10,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.menubar.MenuBar.SubMenu;
+import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -95,7 +95,7 @@ public class PantallaPrincipalView extends VerticalLayout {
                 boton(VaadinIcon.FILE_ADD, "Nuevo archivo", this::crearArchivo),
                 boton(VaadinIcon.FOLDER_ADD, "Nueva carpeta", this::crearCarpeta),
                 boton(VaadinIcon.FOLDER_OPEN, "Abrir carpeta", this::elegirCarpetaNativa),
-                boton(VaadinIcon.SAVE, "Guardar", this::guardarArchivo),
+                boton(VaadinIcon.CHECK, "Guardar", this::guardarArchivo),
                 boton(VaadinIcon.DOWNLOAD, "Guardar todo", this::guardarArchivo),
                 separadorVertical(),
                 configuracion(),
