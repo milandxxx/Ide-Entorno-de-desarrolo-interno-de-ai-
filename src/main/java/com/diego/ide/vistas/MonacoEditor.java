@@ -40,6 +40,13 @@ public class MonacoEditor extends Div {
         }
     }
 
+    /** Ejecuta una accion de Monaco por su id, por ejemplo "undo" o "actions.find". */
+    public void accion(String idAccion) {
+        getElement().executeJs(
+                "if ($0.__editor) { $0.__editor.focus(); $0.__editor.trigger('menu', $1, null); }",
+                getElement(), idAccion);
+    }
+
     /** Devuelve el contenido actual del editor. */
     public CompletableFuture<String> getValor() {
         return getElement()

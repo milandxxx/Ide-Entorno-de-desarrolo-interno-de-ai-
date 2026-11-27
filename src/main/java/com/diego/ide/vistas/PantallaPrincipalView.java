@@ -3,6 +3,8 @@ package com.diego.ide.vistas;
 import com.diego.ide.servicios.ArchivosProyectoService;
 import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.menubar.MenuBar.SubMenu;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -64,8 +66,47 @@ public class PantallaPrincipalView extends VerticalLayout {
         cuerpo.setFlexGrow(1, panelIzquierdo);
         cuerpo.setFlexGrow(3, panelDerecho);
 
-        add(barra, cuerpo);
+        add(crearBarraMenu(), barra, cuerpo);
         expand(cuerpo);
+    }
+
+    /** Barra de menus estilo NetBeans. Las opciones sin funcion aun quedan deshabilitadas. */
+    private MenuBar crearBarraMenu() {
+        MenuBar barraMenu = new MenuBar();
+
+        SubMenu archivo = barraMenu.addItem("Archivo").getSubMenu();
+        opcion(archivo, "Abrir carpeta...", this::elegirCarpetaNativa);
+        opcion(archivo, "Guardar", this::guardarArchivo);
+        opcion(archivo, "Salir", () -> getUI().ifPresent(ui -> ui.getPage().executeJs("window.close()")));
+
+        SubMenu editar = barraMenu.addItem("Editar").getSubMenu();
+        opcionMonaco(editar, "Deshacer", "undo");
+        opcionMonaco(editar, "Rehacer", "redo");
+        opcionMonaco(editar, "Seleccionar todo", "editor.action.selectAll");
+        opcionMonaco(editar, "Buscar", "actions.find");
+        opcionMonaco(editar, "Reemplazar", "editor.action.startFindReplaceAction");
+        opcionMonaco(editar, "Comentar linea", "editor.action.commentLine");
+        opcionMonaco(editar, "Formatear", "editor.action.formatDocument");
+
+        barraMenu.addItem("Ver").getSubMenu().addItem("Proximamente", e -> { }).setEnabled(false);
+
+        for (String menu : new String[] {"Navegar", "Fuente", "Refactorizar", "Ejecutar", "Depurar",
+                "Perfilar", "Equipo", "Herramientas", "Ventana"}) {
+            barraMenu.addItem(menu).getSubMenu().addItem("Proximamente", e -> { }).setEnabled(false);
+        }
+
+        SubMenu ayuda = barraMenu.addItem("Ayuda").getSubMenu();
+        opcion(ayuda, "Acerca de", () -> Notification.show("IDE con IA: version 0.1.0"));
+
+        return barraMenu;
+    }
+
+    private void opcion(SubMenu menu, String texto, Runnable accion) {
+        menu.addItem(texto, e -> accion.run());
+    }
+
+    private void opcionMonaco(SubMenu menu, String texto, String idAccion) {
+        menu.addItem(texto, e -> editor.accion(idAccion));
     }
 
     /** Abre el explorador del sistema para elegir la carpeta y la abre como proyecto. */
