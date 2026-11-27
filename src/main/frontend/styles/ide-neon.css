@@ -81,6 +81,28 @@ body {
   min-height: 24px;
 }
 
+/* Franja lateral con Projects / Files / Navigator, texto en vertical como NetBeans. */
+.tira-lateral {
+  background: var(--aurora-fondo-panel);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 6px;
+}
+
+.tab-lateral {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  min-height: 90px;
+  padding: 8px 2px;
+  font-size: var(--lumo-font-size-s);
+}
+
+/* Pestanas de archivos abiertos sobre el editor. */
+vaadin-tabs {
+  background: var(--aurora-fondo-panel);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 34px;
+}
+
 /* Texto de acento para el archivo abierto y la memoria. */
 .texto-neon {
   color: var(--aurora-acento);

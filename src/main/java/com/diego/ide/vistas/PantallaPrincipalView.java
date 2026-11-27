@@ -2,48 +2,57 @@ package com.diego.ide.vistas;
 
 import com.diego.ide.servicios.ArchivosProyectoService;
 import com.diego.ide.servicios.SelectorCarpeta;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
-import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * Pantalla principal del IDE: abrir proyecto, explorar carpetas, editar y guardar archivos.
- * El arbol es navegable (doble clic para entrar a carpetas o abrir archivos).
- * El editor Monaco llega en el siguiente paso de la fase 1.
+ * Pantalla principal del IDE con distribucion tipo NetBeans: menus, herramientas,
+ * barra lateral, explorador de proyectos, pestanas de archivos abiertos y barra de estado.
  */
 @Route("")
 public class PantallaPrincipalView extends VerticalLayout {
 
     private final ArchivosProyectoService archivos;
-
-    private final TextField rutaProyecto = new TextField("Carpeta del proyecto");
     private final ExploradorArbol explorador;
-    private final Span archivoAbierto = new Span("Ningun archivo abierto");
-    private final Span memoria = new Span();
-    private final Span lenguajeActual = new Span("plaintext");
-    private final MonacoEditor editor = new MonacoEditor();
 
-    /** Ruta absoluta del archivo abierto en el editor, o null. */
+    private final Tabs pestanas = new Tabs();
+    private final Div contenedorEditores = new Div();
+    /** Un editor Monaco por archivo abierto. */
+    private final Map<Path, MonacoEditor> editores = new LinkedHashMap<>();
+    /** Pestana de cada archivo abierto. */
+    private final Map<Path, Tab> pestanasDe = new LinkedHashMap<>();
+
+    private final Span archivoAbierto = new Span("Ningun archivo abierto");
+    private final Span lenguajeActual = new Span("plaintext");
+    private final Span memoria = new Span();
+
+    /** Archivo activo en el editor, o null. */
     private Path rutaAbierta = null;
 
     public PantallaPrincipalView(ArchivosProyectoService archivos) {
@@ -51,12 +60,18 @@ public class PantallaPrincipalView extends VerticalLayout {
         this.explorador = new ExploradorArbol(archivos, this::abrirArchivo);
 
         setSizeFull();
+        setPadding(false);
+        setSpacing(false);
 
-        rutaProyecto.setWidth("60%");
-        Button elegir = new Button("Elegir carpeta...", e -> elegirCarpetaNativa());
-        Button abrir = new Button("Abrir", e -> abrirProyecto());
-        HorizontalLayout barra = new HorizontalLayout(rutaProyecto, elegir, abrir);
-        barra.setAlignItems(FlexComponent.Alignment.END);
+        pestanas.setWidthFull();
+        pestanas.addSelectedChangeListener(e -> {
+            Path ruta = rutaDePestana(e.getSelectedTab());
+            if (ruta != null) {
+                mostrar(ruta);
+            }
+        });
+
+        contenedorEditores.setSizeFull();
 
         VerticalLayout panelIzquierdo = new VerticalLayout(explorador);
         panelIzquierdo.setPadding(false);
@@ -64,31 +79,51 @@ public class PantallaPrincipalView extends VerticalLayout {
         panelIzquierdo.expand(explorador);
         panelIzquierdo.addClassName("panel-neon");
 
-        Button guardar = new Button("Guardar", e -> guardarArchivo());
-        HorizontalLayout barraEditor = new HorizontalLayout(guardar);
-        barraEditor.setAlignItems(FlexComponent.Alignment.CENTER);
-        editor.setSizeFull();
-        VerticalLayout panelDerecho = new VerticalLayout(barraEditor, editor);
+        VerticalLayout panelDerecho = new VerticalLayout(pestanas, contenedorEditores);
         panelDerecho.setPadding(false);
+        panelDerecho.setSpacing(false);
         panelDerecho.setSizeFull();
-        panelDerecho.expand(editor);
+        panelDerecho.expand(contenedorEditores);
         panelDerecho.addClassName("panel-neon");
-        archivoAbierto.addClassName("texto-neon");
 
-        HorizontalLayout cuerpo = new HorizontalLayout(panelIzquierdo, panelDerecho);
+        HorizontalLayout cuerpo = new HorizontalLayout(crearTiraLateral(), panelIzquierdo, panelDerecho);
         cuerpo.setSizeFull();
+        cuerpo.setSpacing(false);
         cuerpo.setFlexGrow(1, panelIzquierdo);
         cuerpo.setFlexGrow(3, panelDerecho);
 
-        add(crearBarraMenu(), crearBarraHerramientas(), barra, cuerpo, crearBarraEstado());
+        add(crearBarraMenu(), crearBarraHerramientas(), cuerpo, crearBarraEstado());
         expand(cuerpo);
     }
 
-    /** Barra inferior: archivo abierto, lenguaje y memoria, como en IntelliJ. */
+    /** Franja vertical con Projects, Files y Navigator, como en NetBeans. */
+    private VerticalLayout crearTiraLateral() {
+        Button projects = new Button("Projects");
+        Button files = new Button("Files");
+        Button navigator = new Button("Navigator");
+        for (Button b : List.of(projects, files, navigator)) {
+            b.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            b.addClassName("tab-lateral");
+        }
+        files.setEnabled(false);
+        navigator.setEnabled(false);
+        projects.getElement().setAttribute("title", "Proyectos abiertos");
+
+        VerticalLayout tira = new VerticalLayout(projects, files, navigator);
+        tira.setPadding(false);
+        tira.setSpacing(false);
+        tira.setWidth("36px");
+        tira.addClassName("tira-lateral");
+        return tira;
+    }
+
+    /** Barra inferior: archivo, lenguaje, modo de insercion, codificacion y memoria. */
     private HorizontalLayout crearBarraEstado() {
+        archivoAbierto.addClassName("texto-neon");
         lenguajeActual.addClassName("texto-neon");
         memoria.addClassName("texto-neon");
-        HorizontalLayout estado = new HorizontalLayout(archivoAbierto, lenguajeActual, memoria);
+        HorizontalLayout estado = new HorizontalLayout(archivoAbierto, lenguajeActual,
+                new Span("INS"), new Span("UTF-8"), memoria);
         estado.setWidthFull();
         estado.setAlignItems(FlexComponent.Alignment.CENTER);
         estado.setPadding(false);
@@ -105,8 +140,8 @@ public class PantallaPrincipalView extends VerticalLayout {
         herramientas.setPadding(false);
 
         herramientas.add(
-                boton(VaadinIcon.ARROW_BACKWARD, "Deshacer", () -> editor.accion("undo")),
-                boton(VaadinIcon.ARROW_FORWARD, "Rehacer", () -> editor.accion("redo")),
+                boton(VaadinIcon.ARROW_BACKWARD, "Deshacer", () -> accionEditor("undo")),
+                boton(VaadinIcon.ARROW_FORWARD, "Rehacer", () -> accionEditor("redo")),
                 separadorVertical(),
                 boton(VaadinIcon.PLUS_CIRCLE, "Nuevo proyecto", this::crearProyecto),
                 boton(VaadinIcon.FILE_ADD, "Nuevo archivo", this::crearArchivo),
@@ -307,7 +342,7 @@ public class PantallaPrincipalView extends VerticalLayout {
                 () -> eliminar(sel));
     }
 
-    /** Borra un archivo o carpeta del disco y actualiza el arbol y el editor. */
+    /** Borra un archivo o carpeta del disco y actualiza el arbol y las pestanas. */
     private void eliminar(Path ruta) {
         try {
             Path padre = ruta.getParent();
@@ -335,13 +370,12 @@ public class PantallaPrincipalView extends VerticalLayout {
         return Files.isDirectory(sel) ? sel : sel.getParent();
     }
 
-    /** Si el archivo abierto esta dentro de la ruta dada, vacia el editor. */
+    /** Cierra las pestanas de archivos que estan dentro de la ruta dada. */
     private void limpiarEditorSi(Path ruta) {
-        if (rutaAbierta != null && rutaAbierta.startsWith(ruta)) {
-            rutaAbierta = null;
-            editor.abrir("", "plaintext");
-            archivoAbierto.setText("Ningun archivo abierto");
-            lenguajeActual.setText("plaintext");
+        for (Path abierto : new ArrayList<>(editores.keySet())) {
+            if (abierto.startsWith(ruta)) {
+                cerrarArchivo(abierto);
+            }
         }
     }
 
@@ -384,53 +418,116 @@ public class PantallaPrincipalView extends VerticalLayout {
     }
 
     private void opcionMonaco(SubMenu menu, String texto, String idAccion) {
-        menu.addItem(texto, e -> editor.accion(idAccion));
+        menu.addItem(texto, e -> accionEditor(idAccion));
     }
 
-    /** Abre el explorador del sistema para elegir la carpeta y la abre como proyecto. */
+    /** Ejecuta una accion de Monaco sobre el archivo activo. */
+    private void accionEditor(String idAccion) {
+        MonacoEditor activo = editorActivo();
+        if (activo != null) {
+            activo.accion(idAccion);
+        }
+    }
+
+    private MonacoEditor editorActivo() {
+        return rutaAbierta == null ? null : editores.get(rutaAbierta);
+    }
+
+    /** Abre el explorador del sistema para elegir la carpeta y la agrega como proyecto. */
     private void elegirCarpetaNativa() {
         try {
-            Path inicial = rutaProyecto.getValue().isBlank() ? null : Paths.get(rutaProyecto.getValue().trim());
-            SelectorCarpeta.elegirCarpeta(inicial).ifPresent(carpeta -> {
-                rutaProyecto.setValue(carpeta.toString());
-                abrirProyecto();
-            });
+            SelectorCarpeta.elegirCarpeta(null).ifPresent(this::abrirProyecto);
         } catch (Exception ex) {
             Notification.show("No se pudo abrir el selector: " + ex.getMessage());
         }
     }
 
-    /** Agrega la carpeta escrita en el campo como proyecto abierto, sin cerrar los demas. */
-    private void abrirProyecto() {
+    /** Agrega una carpeta como proyecto abierto, sin cerrar los demas. */
+    private void abrirProyecto(Path proyecto) {
         try {
-            Path proyecto = Paths.get(rutaProyecto.getValue().trim()).toAbsolutePath().normalize();
-            archivos.abrirProyecto(proyecto);
-            explorador.agregarProyecto(proyecto);
-            Notification.show("Proyecto abierto: " + proyecto.getFileName());
+            Path normal = proyecto.toAbsolutePath().normalize();
+            archivos.abrirProyecto(normal);
+            explorador.agregarProyecto(normal);
+            Notification.show("Proyecto abierto: " + normal.getFileName());
         } catch (Exception ex) {
             Notification.show("Error: " + ex.getMessage());
         }
     }
 
+    /** Abre un archivo en su propia pestana, o solo la activa si ya estaba abierto. */
     private void abrirArchivo(Path archivo) {
         try {
-            String lenguaje = lenguajeDe(archivo.toString());
-            editor.abrir(archivos.leer(archivo), lenguaje);
-            rutaAbierta = archivo;
-            archivoAbierto.setText(archivo.toString());
-            lenguajeActual.setText(lenguaje);
+            if (!editores.containsKey(archivo)) {
+                MonacoEditor nuevo = new MonacoEditor();
+                nuevo.setSizeFull();
+                nuevo.setVisible(false);
+                nuevo.abrir(archivos.leer(archivo), lenguajeDe(archivo.toString()));
+                contenedorEditores.add(nuevo);
+                editores.put(archivo, nuevo);
+
+                Button cerrar = new Button(VaadinIcon.CLOSE_SMALL.create(), e -> cerrarArchivo(archivo));
+                cerrar.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+                HorizontalLayout etiqueta = new HorizontalLayout(new Span(archivo.getFileName().toString()), cerrar);
+                etiqueta.setAlignItems(FlexComponent.Alignment.CENTER);
+                etiqueta.setPadding(false);
+                Tab pestana = new Tab(etiqueta);
+                pestanasDe.put(archivo, pestana);
+                pestanas.add(pestana);
+            }
+            pestanas.setSelectedTab(pestanasDe.get(archivo));
+            mostrar(archivo);
         } catch (Exception ex) {
             Notification.show("No se pudo abrir: " + ex.getMessage());
         }
     }
 
+    /** Muestra el editor del archivo indicado y actualiza la barra de estado. */
+    private void mostrar(Path archivo) {
+        rutaAbierta = archivo;
+        editores.forEach((ruta, ed) -> ed.setVisible(ruta.equals(archivo)));
+        archivoAbierto.setText(archivo.toString());
+        lenguajeActual.setText(lenguajeDe(archivo.toString()));
+    }
+
+    /** Cierra la pestana y el editor de un archivo. */
+    private void cerrarArchivo(Path archivo) {
+        Tab pestana = pestanasDe.remove(archivo);
+        if (pestana != null) {
+            pestanas.remove(pestana);
+        }
+        MonacoEditor ed = editores.remove(archivo);
+        if (ed != null) {
+            contenedorEditores.remove(ed);
+        }
+        if (archivo.equals(rutaAbierta)) {
+            rutaAbierta = null;
+            archivoAbierto.setText("Ningun archivo abierto");
+            lenguajeActual.setText("plaintext");
+            if (!editores.isEmpty()) {
+                Path otro = editores.keySet().iterator().next();
+                pestanas.setSelectedTab(pestanasDe.get(otro));
+                mostrar(otro);
+            }
+        }
+    }
+
+    private Path rutaDePestana(Tab pestana) {
+        for (Map.Entry<Path, Tab> entrada : pestanasDe.entrySet()) {
+            if (entrada.getValue().equals(pestana)) {
+                return entrada.getKey();
+            }
+        }
+        return null;
+    }
+
     private void guardarArchivo() {
-        if (rutaAbierta == null) {
+        MonacoEditor activo = editorActivo();
+        if (activo == null || rutaAbierta == null) {
             Notification.show("No hay archivo abierto");
             return;
         }
         Path archivo = rutaAbierta;
-        editor.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
+        activo.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
             try {
                 archivos.escribir(archivo, contenido);
                 Notification.show("Guardado: " + archivo.getFileName());
@@ -459,5 +556,4 @@ public class PantallaPrincipalView extends VerticalLayout {
             default -> "plaintext";
         };
     }
-
 }
