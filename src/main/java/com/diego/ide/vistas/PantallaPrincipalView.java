@@ -91,19 +91,24 @@ public class PantallaPrincipalView extends VerticalLayout {
                 boton(VaadinIcon.ARROW_BACKWARD, "Deshacer", () -> editor.accion("undo")),
                 boton(VaadinIcon.ARROW_FORWARD, "Rehacer", () -> editor.accion("redo")),
                 separadorVertical(),
+                boton(VaadinIcon.PLUS_CIRCLE, "Nuevo proyecto", this::crearProyecto),
                 boton(VaadinIcon.FILE_ADD, "Nuevo archivo", this::crearArchivo),
                 boton(VaadinIcon.FOLDER_ADD, "Nueva carpeta", this::crearCarpeta),
                 boton(VaadinIcon.FOLDER_OPEN, "Abrir carpeta", this::elegirCarpetaNativa),
                 boton(VaadinIcon.SAVE, "Guardar", this::guardarArchivo),
-                separadorVertical(),
+                boton(VaadinIcon.DOWNLOAD, "Guardar todo", this::guardarArchivo),
                 separadorVertical(),
                 configuracion(),
+                boton(VaadinIcon.GLOBE, "Navegador (proximamente)", null),
                 boton(VaadinIcon.TOOLS, "Compilar (proximamente)", null),
+                boton(VaadinIcon.TRASH, "Limpiar y compilar (proximamente)", null),
                 boton(VaadinIcon.PLAY, "Ejecutar (proximamente)", null),
                 boton(VaadinIcon.BUG, "Depurar (proximamente)", null),
                 boton(VaadinIcon.DASHBOARD, "Perfilar (proximamente)", null),
                 separadorVertical(),
-                memoria);
+                memoria,
+                boton(VaadinIcon.BELL, "Notificaciones (proximamente)", null),
+                boton(VaadinIcon.COG, "Opciones (proximamente)", null));
 
         TextField buscar = new TextField();
         buscar.setPlaceholder("Buscar (Ctrl+I)");
