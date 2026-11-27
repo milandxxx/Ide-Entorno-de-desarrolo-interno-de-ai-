@@ -8,7 +8,6 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 
@@ -32,7 +31,7 @@ public class PantallaPrincipalView extends VerticalLayout {
     private final Span rutaActual = new Span();
     private final Grid<Path> explorador = new Grid<>(Path.class, false);
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
-    private final TextArea editor = new TextArea();
+    private final MonacoEditor editor = new MonacoEditor();
 
     /** Ruta relativa a la raiz de la carpeta que se esta mostrando ("" = raiz). */
     private String carpetaActual = "";
@@ -62,7 +61,6 @@ public class PantallaPrincipalView extends VerticalLayout {
         Button guardar = new Button("Guardar", e -> guardarArchivo());
         HorizontalLayout barraEditor = new HorizontalLayout(archivoAbierto, guardar);
         barraEditor.setAlignItems(FlexComponent.Alignment.CENTER);
-        editor.setPlaceholder("Abre un archivo del explorador");
         editor.setSizeFull();
         VerticalLayout panelDerecho = new VerticalLayout(barraEditor, editor);
         panelDerecho.setPadding(false);
@@ -96,7 +94,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         try {
             archivos.abrirProyecto(Paths.get(rutaProyecto.getValue().trim()));
             rutaAbierta = null;
-            editor.clear();
+            editor.abrir("", "plaintext");
             archivoAbierto.setText("Ningun archivo abierto");
             navegar("");
             Notification.show("Proyecto abierto");
@@ -118,7 +116,7 @@ public class PantallaPrincipalView extends VerticalLayout {
 
     private void abrirArchivo(String rutaRelativa) {
         try {
-            editor.setValue(archivos.leer(rutaRelativa));
+            editor.abrir(archivos.leer(rutaRelativa), lenguajeDe(rutaRelativa));
             rutaAbierta = rutaRelativa;
             archivoAbierto.setText(rutaRelativa);
         } catch (Exception ex) {
@@ -131,12 +129,35 @@ public class PantallaPrincipalView extends VerticalLayout {
             Notification.show("No hay archivo abierto");
             return;
         }
-        try {
-            archivos.escribir(rutaAbierta, editor.getValue());
-            Notification.show("Guardado: " + rutaAbierta);
-        } catch (IOException ex) {
-            Notification.show("No se pudo guardar: " + ex.getMessage());
-        }
+        String ruta = rutaAbierta;
+        editor.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
+            try {
+                archivos.escribir(ruta, contenido);
+                Notification.show("Guardado: " + ruta);
+            } catch (IOException ex) {
+                Notification.show("No se pudo guardar: " + ex.getMessage());
+            }
+        })));
+    }
+
+    /** Lenguaje de Monaco segun la extension del archivo. */
+    private String lenguajeDe(String ruta) {
+        String extension = ruta.contains(".") ? ruta.substring(ruta.lastIndexOf('.') + 1).toLowerCase() : "";
+        return switch (extension) {
+            case "java" -> "java";
+            case "py" -> "python";
+            case "js" -> "javascript";
+            case "ts" -> "typescript";
+            case "cs" -> "csharp";
+            case "c", "h" -> "c";
+            case "cpp", "cc", "hpp" -> "cpp";
+            case "json" -> "json";
+            case "html" -> "html";
+            case "css" -> "css";
+            case "xml" -> "xml";
+            case "md" -> "markdown";
+            default -> "plaintext";
+        };
     }
 
     /** Carpeta padre de una ruta relativa; "" si ya es la raiz. */
