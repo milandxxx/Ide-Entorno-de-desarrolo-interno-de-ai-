@@ -3,7 +3,6 @@ package com.diego.ide.vistas;
 import com.diego.ide.servicios.ArchivosProyectoService;
 import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -13,10 +12,8 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 
 /**
  * Pantalla principal del IDE: abrir proyecto, explorar carpetas, editar y guardar archivos.
@@ -29,18 +26,16 @@ public class PantallaPrincipalView extends VerticalLayout {
     private final ArchivosProyectoService archivos;
 
     private final TextField rutaProyecto = new TextField("Carpeta del proyecto");
-    private final Span rutaActual = new Span();
-    private final Grid<Path> explorador = new Grid<>(Path.class, false);
+    private final ExploradorArbol explorador;
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
     private final MonacoEditor editor = new MonacoEditor();
 
-    /** Ruta relativa a la raiz de la carpeta que se esta mostrando ("" = raiz). */
-    private String carpetaActual = "";
     /** Ruta relativa del archivo abierto en el editor, o null. */
     private String rutaAbierta = null;
 
     public PantallaPrincipalView(ArchivosProyectoService archivos) {
         this.archivos = archivos;
+        this.explorador = new ExploradorArbol(archivos, this::abrirArchivo);
 
         setSizeFull();
 
@@ -50,12 +45,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         HorizontalLayout barra = new HorizontalLayout(rutaProyecto, elegir, abrir);
         barra.setAlignItems(FlexComponent.Alignment.END);
 
-        configurarExplorador();
-
-        Button subir = new Button("Subir", e -> navegar(padreDe(carpetaActual)));
-        HorizontalLayout barraExplorador = new HorizontalLayout(subir, rutaActual);
-        barraExplorador.setAlignItems(FlexComponent.Alignment.CENTER);
-        VerticalLayout panelIzquierdo = new VerticalLayout(barraExplorador, explorador);
+        VerticalLayout panelIzquierdo = new VerticalLayout(explorador);
         panelIzquierdo.setPadding(false);
         panelIzquierdo.setSizeFull();
         panelIzquierdo.expand(explorador);
@@ -78,20 +68,6 @@ public class PantallaPrincipalView extends VerticalLayout {
         expand(cuerpo);
     }
 
-    private void configurarExplorador() {
-        explorador.addColumn(this::etiqueta).setHeader("Nombre").setFlexGrow(1);
-        explorador.setSizeFull();
-        explorador.addItemDoubleClickListener(e -> {
-            Path item = e.getItem();
-            String relativa = relativa(item);
-            if (Files.isDirectory(item)) {
-                navegar(relativa);
-            } else {
-                abrirArchivo(relativa);
-            }
-        });
-    }
-
     /** Abre el explorador del sistema para elegir la carpeta y la abre como proyecto. */
     private void elegirCarpetaNativa() {
         try {
@@ -111,21 +87,10 @@ public class PantallaPrincipalView extends VerticalLayout {
             rutaAbierta = null;
             editor.abrir("", "plaintext");
             archivoAbierto.setText("Ningun archivo abierto");
-            navegar("");
+            explorador.abrirRaiz();
             Notification.show("Proyecto abierto");
         } catch (Exception ex) {
             Notification.show("Error: " + ex.getMessage());
-        }
-    }
-
-    private void navegar(String carpeta) {
-        try {
-            carpetaActual = carpeta == null ? "" : carpeta;
-            List<Path> entradas = archivos.listar(carpetaActual);
-            explorador.setItems(entradas);
-            rutaActual.setText("/" + carpetaActual);
-        } catch (Exception ex) {
-            Notification.show("No se pudo listar: " + ex.getMessage());
         }
     }
 
@@ -175,21 +140,4 @@ public class PantallaPrincipalView extends VerticalLayout {
         };
     }
 
-    /** Carpeta padre de una ruta relativa; "" si ya es la raiz. */
-    private String padreDe(String ruta) {
-        if (ruta == null || ruta.isEmpty()) {
-            return "";
-        }
-        Path padre = Paths.get(ruta).getParent();
-        return padre == null ? "" : padre.toString().replace('\\', '/');
-    }
-
-    private String relativa(Path ruta) {
-        return archivos.getRaiz().relativize(ruta).toString().replace('\\', '/');
-    }
-
-    private String etiqueta(Path ruta) {
-        String nombre = ruta.getFileName().toString();
-        return Files.isDirectory(ruta) ? nombre + "/" : nombre;
-    }
 }
