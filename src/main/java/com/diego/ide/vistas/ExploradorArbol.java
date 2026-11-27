@@ -9,6 +9,7 @@ import com.vaadin.flow.data.provider.hierarchy.TreeDataProvider;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -56,6 +57,29 @@ public class ExploradorArbol extends TreeGrid<Path> {
         alDesplegar(raiz);
         proveedor.refreshAll();
         expand(raiz);
+    }
+
+    /** Vuelve a leer una carpeta del arbol, por ejemplo despues de crear o borrar algo dentro. */
+    public void recargar(Path carpeta) {
+        if (!datos.contains(carpeta)) {
+            return;
+        }
+        for (Path hijo : new ArrayList<>(datos.getChildren(carpeta))) {
+            datos.removeItem(hijo);
+        }
+        cargadas.removeIf(p -> p.startsWith(carpeta));
+        alDesplegar(carpeta);
+        proveedor.refreshAll();
+        expand(carpeta);
+    }
+
+    /** Quita un proyecto del arbol. No borra nada del disco. */
+    public void quitarProyecto(Path raiz) {
+        if (datos.contains(raiz)) {
+            datos.removeItem(raiz);
+        }
+        cargadas.removeIf(p -> p.startsWith(raiz));
+        proveedor.refreshAll();
     }
 
     /** Carga los hijos de la carpeta desplegada y, un nivel mas, los de sus subcarpetas. */

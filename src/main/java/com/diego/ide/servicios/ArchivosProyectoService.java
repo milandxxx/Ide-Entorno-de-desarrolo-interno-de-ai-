@@ -95,15 +95,39 @@ public class ArchivosProyectoService {
         Files.createDirectories(validar(carpeta));
     }
 
+    /** Crea una carpeta nueva como proyecto dentro de la carpeta padre y la abre. */
+    public Path crearProyecto(Path carpetaPadre, String nombre) throws IOException {
+        if (!Files.isDirectory(carpetaPadre)) {
+            throw new IllegalArgumentException("No es una carpeta: " + carpetaPadre);
+        }
+        Path nuevo = carpetaPadre.toAbsolutePath().normalize().resolve(nombre).normalize();
+        if (Files.exists(nuevo)) {
+            throw new IllegalArgumentException("Ya existe: " + nuevo.getFileName());
+        }
+        Files.createDirectories(nuevo);
+        abrirProyecto(nuevo);
+        return nuevo;
+    }
+
     /**
-     * Borra un archivo o una carpeta vacia. Los proyectos abiertos no se borran
-     * desde aqui: para quitarlos de la lista usa cerrarProyecto.
+     * Borra un archivo o una carpeta. Las carpetas se borran con todo su contenido.
+     * Los proyectos abiertos no se borran desde aqui: para quitarlos usa cerrarProyecto.
      */
     public void borrar(Path ruta) throws IOException {
         Path objetivo = validar(ruta);
         if (esRaiz(objetivo)) {
             throw new SecurityException("No se puede borrar un proyecto abierto; usa cerrarProyecto");
         }
-        Files.delete(objetivo);
+        if (Files.isDirectory(objetivo)) {
+            List<Path> contenido;
+            try (Stream<Path> recorrido = Files.walk(objetivo)) {
+                contenido = recorrido.sorted(java.util.Comparator.reverseOrder()).toList();
+            }
+            for (Path entrada : contenido) {
+                Files.delete(entrada);
+            }
+        } else {
+            Files.delete(objetivo);
+        }
     }
 }

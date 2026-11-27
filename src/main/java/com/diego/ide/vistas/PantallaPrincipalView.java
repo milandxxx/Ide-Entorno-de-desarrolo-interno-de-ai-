@@ -3,6 +3,8 @@ package com.diego.ide.vistas;
 import com.diego.ide.servicios.ArchivosProyectoService;
 import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBar.SubMenu;
 import com.vaadin.flow.component.notification.Notification;
@@ -14,8 +16,11 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Pantalla principal del IDE: abrir proyecto, explorar carpetas, editar y guardar archivos.
@@ -76,6 +81,12 @@ public class PantallaPrincipalView extends VerticalLayout {
 
         SubMenu archivo = barraMenu.addItem("Archivo").getSubMenu();
         opcion(archivo, "Abrir carpeta...", this::elegirCarpetaNativa);
+        opcion(archivo, "Crear proyecto...", this::crearProyecto);
+        opcion(archivo, "Cerrar proyecto", this::cerrarProyecto);
+        opcion(archivo, "Crear archivo...", this::crearArchivo);
+        opcion(archivo, "Crear carpeta...", this::crearCarpeta);
+        opcion(archivo, "Eliminar archivo", this::eliminarArchivo);
+        opcion(archivo, "Eliminar carpeta", this::eliminarCarpeta);
         opcion(archivo, "Guardar", this::guardarArchivo);
         opcion(archivo, "Salir", () -> getUI().ifPresent(ui -> ui.getPage().executeJs("window.close()")));
 
@@ -99,6 +110,167 @@ public class PantallaPrincipalView extends VerticalLayout {
         opcion(ayuda, "Acerca de", () -> Notification.show("IDE con IA: version 0.1.0"));
 
         return barraMenu;
+    }
+
+    /** Crea un proyecto nuevo: primero se elige la carpeta padre y luego el nombre. */
+    private void crearProyecto() {
+        Optional<Path> padre = SelectorCarpeta.elegirCarpeta(null);
+        if (padre.isEmpty()) {
+            return;
+        }
+        pedirNombre("Nombre del nuevo proyecto", nombre -> {
+            try {
+                Path nuevo = archivos.crearProyecto(padre.get(), nombre);
+                explorador.agregarProyecto(nuevo);
+                Notification.show("Proyecto creado: " + nuevo.getFileName());
+            } catch (Exception ex) {
+                Notification.show("No se pudo crear: " + ex.getMessage());
+            }
+        });
+    }
+
+    /** Quita del arbol el proyecto al que pertenece el elemento seleccionado. */
+    private void cerrarProyecto() {
+        Path sel = seleccionado();
+        if (sel == null) {
+            Notification.show("Selecciona un elemento del proyecto que quieres cerrar");
+            return;
+        }
+        archivos.getRaices().stream()
+                .filter(raiz -> sel.startsWith(raiz))
+                .findFirst()
+                .ifPresentOrElse(raiz -> {
+                    archivos.cerrarProyecto(raiz);
+                    explorador.quitarProyecto(raiz);
+                    limpiarEditorSi(raiz);
+                    Notification.show("Proyecto cerrado: " + raiz.getFileName());
+                }, () -> Notification.show("El elemento seleccionado no pertenece a un proyecto abierto"));
+    }
+
+    private void crearArchivo() {
+        Path destino = carpetaDestino();
+        if (destino == null) {
+            return;
+        }
+        pedirNombre("Nombre del archivo", nombre -> {
+            try {
+                Path nuevo = archivos.resolver(destino, nombre);
+                archivos.escribir(nuevo, "");
+                explorador.recargar(destino);
+                abrirArchivo(nuevo);
+            } catch (Exception ex) {
+                Notification.show("No se pudo crear: " + ex.getMessage());
+            }
+        });
+    }
+
+    private void crearCarpeta() {
+        Path destino = carpetaDestino();
+        if (destino == null) {
+            return;
+        }
+        pedirNombre("Nombre de la carpeta", nombre -> {
+            try {
+                archivos.crearCarpeta(archivos.resolver(destino, nombre));
+                explorador.recargar(destino);
+            } catch (Exception ex) {
+                Notification.show("No se pudo crear: " + ex.getMessage());
+            }
+        });
+    }
+
+    private void eliminarArchivo() {
+        Path sel = seleccionado();
+        if (sel == null || Files.isDirectory(sel)) {
+            Notification.show("Selecciona un archivo en el explorador");
+            return;
+        }
+        confirmar("Eliminar el archivo " + sel.getFileName() + "? No se puede deshacer.", () -> eliminar(sel));
+    }
+
+    private void eliminarCarpeta() {
+        Path sel = seleccionado();
+        if (sel == null || !Files.isDirectory(sel)) {
+            Notification.show("Selecciona una carpeta en el explorador");
+            return;
+        }
+        if (archivos.esRaiz(sel)) {
+            Notification.show("Para quitar un proyecto usa Cerrar proyecto");
+            return;
+        }
+        confirmar("Eliminar la carpeta " + sel.getFileName() + " y todo su contenido? No se puede deshacer.",
+                () -> eliminar(sel));
+    }
+
+    /** Borra un archivo o carpeta del disco y actualiza el arbol y el editor. */
+    private void eliminar(Path ruta) {
+        try {
+            Path padre = ruta.getParent();
+            archivos.borrar(ruta);
+            limpiarEditorSi(ruta);
+            explorador.recargar(padre);
+            Notification.show("Eliminado: " + ruta.getFileName());
+        } catch (Exception ex) {
+            Notification.show("No se pudo eliminar: " + ex.getMessage());
+        }
+    }
+
+    /** Elemento seleccionado en el explorador, o null. */
+    private Path seleccionado() {
+        return explorador.asSingleSelect().getValue();
+    }
+
+    /** Carpeta donde se crean los nuevos elementos: la seleccionada o la carpeta del archivo seleccionado. */
+    private Path carpetaDestino() {
+        Path sel = seleccionado();
+        if (sel == null) {
+            Notification.show("Selecciona una carpeta en el explorador");
+            return null;
+        }
+        return Files.isDirectory(sel) ? sel : sel.getParent();
+    }
+
+    /** Si el archivo abierto esta dentro de la ruta dada, vacia el editor. */
+    private void limpiarEditorSi(Path ruta) {
+        if (rutaAbierta != null && rutaAbierta.startsWith(ruta)) {
+            rutaAbierta = null;
+            editor.abrir("", "plaintext");
+            archivoAbierto.setText("Ningun archivo abierto");
+        }
+    }
+
+    private void pedirNombre(String titulo, Consumer<String> alAceptar) {
+        Dialog dialogo = new Dialog();
+        dialogo.setHeaderTitle(titulo);
+        TextField campo = new TextField("Nombre");
+        campo.setWidthFull();
+        Button aceptar = new Button("Aceptar", e -> {
+            String nombre = campo.getValue().trim();
+            if (nombre.isEmpty()) {
+                Notification.show("Escribe un nombre");
+                return;
+            }
+            dialogo.close();
+            alAceptar.accept(nombre);
+        });
+        Button cancelar = new Button("Cancelar", e -> dialogo.close());
+        dialogo.add(campo);
+        dialogo.getFooter().add(cancelar, aceptar);
+        dialogo.open();
+    }
+
+    private void confirmar(String mensaje, Runnable alAceptar) {
+        Dialog dialogo = new Dialog();
+        dialogo.setHeaderTitle("Confirmar");
+        dialogo.add(new Span(mensaje));
+        Button aceptar = new Button("Eliminar", e -> {
+            dialogo.close();
+            alAceptar.run();
+        });
+        aceptar.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        Button cancelar = new Button("Cancelar", e -> dialogo.close());
+        dialogo.getFooter().add(cancelar, aceptar);
+        dialogo.open();
     }
 
     private void opcion(SubMenu menu, String texto, Runnable accion) {
