@@ -44,7 +44,8 @@ public class MonacoEditor extends Div {
     public CompletableFuture<String> getValor() {
         return getElement()
                 .executeJs("return $0.__editor ? $0.__editor.getValue() : '';", getElement())
-                .toCompletableFuture();
+                .toCompletableFuture()
+                .thenApply(json -> json.asString());
     }
 
     @Override
