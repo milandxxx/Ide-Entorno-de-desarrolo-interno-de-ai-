@@ -1,13 +1,18 @@
 package com.diego.ide;
 
 import com.vaadin.flow.component.page.AppShellConfigurator;
-import org.springframework.boot.SpringApplication;
+import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
 public class IdeApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
-        SpringApplication.run(IdeApplication.class, args);
+        // headless(false): necesario para abrir el selector de carpetas del sistema.
+        new SpringApplicationBuilder(IdeApplication.class)
+                .headless(false)
+                .bannerMode(Banner.Mode.CONSOLE)
+                .run(args);
     }
 }

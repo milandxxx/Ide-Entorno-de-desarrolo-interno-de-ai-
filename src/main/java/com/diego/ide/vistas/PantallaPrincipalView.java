@@ -1,6 +1,7 @@
 package com.diego.ide.vistas;
 
 import com.diego.ide.servicios.ArchivosProyectoService;
+import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
@@ -44,8 +45,9 @@ public class PantallaPrincipalView extends VerticalLayout {
         setSizeFull();
 
         rutaProyecto.setWidth("60%");
+        Button elegir = new Button("Elegir carpeta...", e -> elegirCarpetaNativa());
         Button abrir = new Button("Abrir", e -> abrirProyecto());
-        HorizontalLayout barra = new HorizontalLayout(rutaProyecto, abrir);
+        HorizontalLayout barra = new HorizontalLayout(rutaProyecto, elegir, abrir);
         barra.setAlignItems(FlexComponent.Alignment.END);
 
         configurarExplorador();
@@ -88,6 +90,19 @@ public class PantallaPrincipalView extends VerticalLayout {
                 abrirArchivo(relativa);
             }
         });
+    }
+
+    /** Abre el explorador del sistema para elegir la carpeta y la abre como proyecto. */
+    private void elegirCarpetaNativa() {
+        try {
+            Path inicial = rutaProyecto.getValue().isBlank() ? null : Paths.get(rutaProyecto.getValue().trim());
+            SelectorCarpeta.elegirCarpeta(inicial).ifPresent(carpeta -> {
+                rutaProyecto.setValue(carpeta.toString());
+                abrirProyecto();
+            });
+        } catch (Exception ex) {
+            Notification.show("No se pudo abrir el selector: " + ex.getMessage());
+        }
     }
 
     private void abrirProyecto() {
