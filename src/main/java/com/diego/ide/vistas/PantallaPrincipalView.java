@@ -5,6 +5,8 @@ import com.diego.ide.servicios.SelectorCarpeta;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBar.SubMenu;
 import com.vaadin.flow.component.notification.Notification;
@@ -71,8 +73,54 @@ public class PantallaPrincipalView extends VerticalLayout {
         cuerpo.setFlexGrow(1, panelIzquierdo);
         cuerpo.setFlexGrow(3, panelDerecho);
 
-        add(crearBarraMenu(), barra, cuerpo);
+        add(crearBarraMenu(), crearBarraHerramientas(), barra, cuerpo);
         expand(cuerpo);
+    }
+
+    /** Barra de iconos debajo del menu, al estilo de NetBeans. */
+    private HorizontalLayout crearBarraHerramientas() {
+        HorizontalLayout herramientas = new HorizontalLayout();
+        herramientas.setWidthFull();
+        herramientas.setAlignItems(FlexComponent.Alignment.CENTER);
+        herramientas.setPadding(false);
+
+        herramientas.add(
+                boton(VaadinIcon.ARROW_BACKWARD, "Deshacer", () -> editor.accion("undo")),
+                boton(VaadinIcon.ARROW_FORWARD, "Rehacer", () -> editor.accion("redo")),
+                separadorVertical(),
+                boton(VaadinIcon.FILE_ADD, "Nuevo archivo", this::crearArchivo),
+                boton(VaadinIcon.FOLDER_ADD, "Nueva carpeta", this::crearCarpeta),
+                boton(VaadinIcon.FOLDER_OPEN, "Abrir carpeta", this::elegirCarpetaNativa),
+                boton(VaadinIcon.SAVE, "Guardar", this::guardarArchivo),
+                separadorVertical(),
+                boton(VaadinIcon.PLAY, "Ejecutar (proximamente)", null),
+                boton(VaadinIcon.BUG, "Depurar (proximamente)", null));
+
+        TextField buscar = new TextField();
+        buscar.setPlaceholder("Buscar (Ctrl+I)");
+        buscar.setPrefixComponent(VaadinIcon.SEARCH.create());
+        buscar.setWidth("260px");
+        herramientas.add(buscar);
+        herramientas.getStyle().set("flex-wrap", "wrap");
+        return herramientas;
+    }
+
+    private Div separadorVertical() {
+        Div linea = new Div();
+        linea.getStyle().set("width", "1px").set("height", "20px").set("background", "var(--lumo-contrast-20pct)");
+        linea.getStyle().set("margin", "0 4px");
+        return linea;
+    }
+
+    /** Boton solo con icono. Si la accion es null, queda deshabilitado. */
+    private Button boton(VaadinIcon icono, String ayuda, Runnable accion) {
+        Button boton = new Button(icono.create(), e -> accion.run());
+        boton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        boton.getElement().setAttribute("title", ayuda);
+        if (accion == null) {
+            boton.setEnabled(false);
+        }
+        return boton;
     }
 
     /** Barra de menus estilo NetBeans. Las opciones sin funcion aun quedan deshabilitadas. */
