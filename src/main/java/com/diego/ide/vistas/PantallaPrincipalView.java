@@ -30,8 +30,8 @@ public class PantallaPrincipalView extends VerticalLayout {
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
     private final MonacoEditor editor = new MonacoEditor();
 
-    /** Ruta relativa del archivo abierto en el editor, o null. */
-    private String rutaAbierta = null;
+    /** Ruta absoluta del archivo abierto en el editor, o null. */
+    private Path rutaAbierta = null;
 
     public PantallaPrincipalView(ArchivosProyectoService archivos) {
         this.archivos = archivos;
@@ -81,24 +81,23 @@ public class PantallaPrincipalView extends VerticalLayout {
         }
     }
 
+    /** Agrega la carpeta escrita en el campo como proyecto abierto, sin cerrar los demas. */
     private void abrirProyecto() {
         try {
-            archivos.abrirProyecto(Paths.get(rutaProyecto.getValue().trim()));
-            rutaAbierta = null;
-            editor.abrir("", "plaintext");
-            archivoAbierto.setText("Ningun archivo abierto");
-            explorador.abrirRaiz();
-            Notification.show("Proyecto abierto");
+            Path proyecto = Paths.get(rutaProyecto.getValue().trim()).toAbsolutePath().normalize();
+            archivos.abrirProyecto(proyecto);
+            explorador.agregarProyecto(proyecto);
+            Notification.show("Proyecto abierto: " + proyecto.getFileName());
         } catch (Exception ex) {
             Notification.show("Error: " + ex.getMessage());
         }
     }
 
-    private void abrirArchivo(String rutaRelativa) {
+    private void abrirArchivo(Path archivo) {
         try {
-            editor.abrir(archivos.leer(rutaRelativa), lenguajeDe(rutaRelativa));
-            rutaAbierta = rutaRelativa;
-            archivoAbierto.setText(rutaRelativa);
+            editor.abrir(archivos.leer(archivo), lenguajeDe(archivo.toString()));
+            rutaAbierta = archivo;
+            archivoAbierto.setText(archivo.toString());
         } catch (Exception ex) {
             Notification.show("No se pudo abrir: " + ex.getMessage());
         }
@@ -109,11 +108,11 @@ public class PantallaPrincipalView extends VerticalLayout {
             Notification.show("No hay archivo abierto");
             return;
         }
-        String ruta = rutaAbierta;
+        Path archivo = rutaAbierta;
         editor.getValor().thenAccept(contenido -> getUI().ifPresent(ui -> ui.access(() -> {
             try {
-                archivos.escribir(ruta, contenido);
-                Notification.show("Guardado: " + ruta);
+                archivos.escribir(archivo, contenido);
+                Notification.show("Guardado: " + archivo.getFileName());
             } catch (IOException ex) {
                 Notification.show("No se pudo guardar: " + ex.getMessage());
             }

@@ -21,13 +21,13 @@ import java.util.function.Consumer;
 public class ExploradorArbol extends TreeGrid<Path> {
 
     private final ArchivosProyectoService archivos;
-    private final Consumer<String> alAbrirArchivo;
+    private final Consumer<Path> alAbrirArchivo;
     private final TreeData<Path> datos = new TreeData<>();
     private final TreeDataProvider<Path> proveedor = new TreeDataProvider<>(datos);
     /** Carpetas cuyos hijos ya se listaron, para no repetir trabajo. */
     private final Set<Path> cargadas = new HashSet<>();
 
-    public ExploradorArbol(ArchivosProyectoService archivos, Consumer<String> alAbrirArchivo) {
+    public ExploradorArbol(ArchivosProyectoService archivos, Consumer<Path> alAbrirArchivo) {
         this.archivos = archivos;
         this.alAbrirArchivo = alAbrirArchivo;
 
@@ -43,17 +43,16 @@ public class ExploradorArbol extends TreeGrid<Path> {
         addItemDoubleClickListener(evento -> {
             Path item = evento.getItem();
             if (!Files.isDirectory(item)) {
-                alAbrirArchivo.accept(relativa(item));
+                alAbrirArchivo.accept(item);
             }
         });
     }
 
-    /** Muestra la raiz del proyecto abierto, desplegada. */
-    public void abrirRaiz() {
-        datos.clear();
-        cargadas.clear();
-        Path raiz = archivos.getRaiz();
-        datos.addItem(null, raiz);
+    /** Agrega un proyecto como raiz del arbol, desplegada. Si ya estaba, solo lo despliega. */
+    public void agregarProyecto(Path raiz) {
+        if (!datos.contains(raiz)) {
+            datos.addItem(null, raiz);
+        }
         alDesplegar(raiz);
         proveedor.refreshAll();
         expand(raiz);
@@ -75,16 +74,12 @@ public class ExploradorArbol extends TreeGrid<Path> {
             return;
         }
         try {
-            for (Path hijo : archivos.listar(relativa(carpeta))) {
+            for (Path hijo : archivos.listar(carpeta)) {
                 datos.addItem(carpeta, hijo);
             }
         } catch (IOException ex) {
             Notification.show("No se pudo listar " + carpeta.getFileName() + ": " + ex.getMessage());
         }
-    }
-
-    private String relativa(Path ruta) {
-        return archivos.getRaiz().relativize(ruta).toString().replace('\\', '/');
     }
 
     private String etiqueta(Path ruta) {
