@@ -61,6 +61,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         panelIzquierdo.setPadding(false);
         panelIzquierdo.setSizeFull();
         panelIzquierdo.expand(explorador);
+        panelIzquierdo.addClassName("panel-neon");
 
         Button guardar = new Button("Guardar", e -> guardarArchivo());
         HorizontalLayout barraEditor = new HorizontalLayout(archivoAbierto, guardar);
@@ -70,6 +71,8 @@ public class PantallaPrincipalView extends VerticalLayout {
         panelDerecho.setPadding(false);
         panelDerecho.setSizeFull();
         panelDerecho.expand(editor);
+        panelDerecho.addClassName("panel-neon");
+        archivoAbierto.addClassName("texto-neon");
 
         HorizontalLayout cuerpo = new HorizontalLayout(panelIzquierdo, panelDerecho);
         cuerpo.setSizeFull();
@@ -116,6 +119,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         buscar.setWidth("260px");
         herramientas.add(buscar);
         herramientas.getStyle().set("flex-wrap", "wrap");
+        herramientas.addClassName("barra-herramientas");
         return herramientas;
     }
 
@@ -196,6 +200,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         SubMenu ayuda = barraMenu.addItem("Ayuda").getSubMenu();
         opcion(ayuda, "Acerca de", () -> Notification.show("IDE con IA: version 0.1.0"));
 
+        barraMenu.addClassName("barra-neon");
         return barraMenu;
     }
 

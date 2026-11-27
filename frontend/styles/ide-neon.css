@@ -1,0 +1,80 @@
+/* Tema "Neon" del IDE: oscuro al estilo IntelliJ con acentos neon y borde RGB animado. */
+
+html {
+  color-scheme: dark;
+
+  --lumo-base-color: #1a1a24;
+  --lumo-body-text-color: #e8e8f2;
+  --lumo-secondary-text-color: #a6a6bf;
+  --lumo-tertiary-text-color: #7e7e98;
+  --lumo-header-text-color: #e8e8f2;
+
+  --lumo-contrast-5pct: rgba(255, 255, 255, 0.05);
+  --lumo-contrast-10pct: rgba(255, 255, 255, 0.10);
+  --lumo-contrast-20pct: rgba(255, 255, 255, 0.20);
+  --lumo-contrast-30pct: rgba(255, 255, 255, 0.30);
+  --lumo-contrast-50pct: rgba(255, 255, 255, 0.50);
+  --lumo-contrast-60pct: rgba(255, 255, 255, 0.60);
+  --lumo-contrast-80pct: rgba(255, 255, 255, 0.80);
+
+  --lumo-primary-color: #00e5ff;
+  --lumo-primary-text-color: #00e5ff;
+  --lumo-primary-color-50pct: rgba(0, 229, 255, 0.50);
+  --lumo-primary-color-10pct: rgba(0, 229, 255, 0.10);
+  --lumo-primary-contrast-color: #0b0b12;
+
+  --neon-rosa: #ff0080;
+  --neon-naranja: #ff8c00;
+  --neon-verde: #40ff00;
+  --neon-cian: #00e5ff;
+  --neon-violeta: #7b2fff;
+}
+
+body {
+  margin: 0;
+  background: #101019;
+  color: #e8e8f2;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* Barras de menu y herramientas con linea RGB animada debajo. */
+.barra-neon,
+.barra-herramientas {
+  position: relative;
+  background: #15151f;
+  padding: 4px 8px;
+}
+
+.barra-neon::after,
+.barra-herramientas::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--neon-rosa), var(--neon-naranja), var(--neon-verde),
+    var(--neon-cian), var(--neon-violeta), var(--neon-rosa));
+  background-size: 200% 100%;
+  animation: rgb-desplazar 4s linear infinite;
+  box-shadow: 0 0 8px var(--neon-cian), 0 0 16px var(--neon-rosa);
+}
+
+/* Paneles con borde neon sutil, estilo tool window. */
+.panel-neon {
+  background: #15151f;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 229, 255, 0.25), 0 0 12px rgba(0, 229, 255, 0.10);
+}
+
+@keyframes rgb-desplazar {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Texto neon para el nombre del archivo abierto. */
+.texto-neon {
+  color: var(--neon-cian);
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+}

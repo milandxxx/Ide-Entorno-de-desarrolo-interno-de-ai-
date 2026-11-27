@@ -1,11 +1,13 @@
 package com.diego.ide;
 
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
+@CssImport("./styles/ide-neon.css")
 public class IdeApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
