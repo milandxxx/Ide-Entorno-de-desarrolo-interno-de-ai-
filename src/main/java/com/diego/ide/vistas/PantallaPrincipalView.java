@@ -40,6 +40,7 @@ public class PantallaPrincipalView extends VerticalLayout {
     private final ExploradorArbol explorador;
     private final Span archivoAbierto = new Span("Ningun archivo abierto");
     private final Span memoria = new Span();
+    private final Span lenguajeActual = new Span("plaintext");
     private final MonacoEditor editor = new MonacoEditor();
 
     /** Ruta absoluta del archivo abierto en el editor, o null. */
@@ -64,7 +65,7 @@ public class PantallaPrincipalView extends VerticalLayout {
         panelIzquierdo.addClassName("panel-neon");
 
         Button guardar = new Button("Guardar", e -> guardarArchivo());
-        HorizontalLayout barraEditor = new HorizontalLayout(archivoAbierto, guardar);
+        HorizontalLayout barraEditor = new HorizontalLayout(guardar);
         barraEditor.setAlignItems(FlexComponent.Alignment.CENTER);
         editor.setSizeFull();
         VerticalLayout panelDerecho = new VerticalLayout(barraEditor, editor);
@@ -79,8 +80,21 @@ public class PantallaPrincipalView extends VerticalLayout {
         cuerpo.setFlexGrow(1, panelIzquierdo);
         cuerpo.setFlexGrow(3, panelDerecho);
 
-        add(crearBarraMenu(), crearBarraHerramientas(), barra, cuerpo);
+        add(crearBarraMenu(), crearBarraHerramientas(), barra, cuerpo, crearBarraEstado());
         expand(cuerpo);
+    }
+
+    /** Barra inferior: archivo abierto, lenguaje y memoria, como en IntelliJ. */
+    private HorizontalLayout crearBarraEstado() {
+        lenguajeActual.addClassName("texto-neon");
+        memoria.addClassName("texto-neon");
+        HorizontalLayout estado = new HorizontalLayout(archivoAbierto, lenguajeActual, memoria);
+        estado.setWidthFull();
+        estado.setAlignItems(FlexComponent.Alignment.CENTER);
+        estado.setPadding(false);
+        estado.getStyle().set("gap", "24px");
+        estado.addClassName("barra-estado");
+        return estado;
     }
 
     /** Barra de iconos debajo del menu, al estilo de NetBeans. */
@@ -109,7 +123,6 @@ public class PantallaPrincipalView extends VerticalLayout {
                 boton(VaadinIcon.BUG, "Depurar (proximamente)", null),
                 boton(VaadinIcon.DASHBOARD, "Perfilar (proximamente)", null),
                 separadorVertical(),
-                memoria,
                 boton(VaadinIcon.BELL, "Notificaciones (proximamente)", null),
                 boton(VaadinIcon.COG, "Opciones (proximamente)", null));
 
@@ -328,6 +341,7 @@ public class PantallaPrincipalView extends VerticalLayout {
             rutaAbierta = null;
             editor.abrir("", "plaintext");
             archivoAbierto.setText("Ningun archivo abierto");
+            lenguajeActual.setText("plaintext");
         }
     }
 
@@ -400,9 +414,11 @@ public class PantallaPrincipalView extends VerticalLayout {
 
     private void abrirArchivo(Path archivo) {
         try {
-            editor.abrir(archivos.leer(archivo), lenguajeDe(archivo.toString()));
+            String lenguaje = lenguajeDe(archivo.toString());
+            editor.abrir(archivos.leer(archivo), lenguaje);
             rutaAbierta = archivo;
             archivoAbierto.setText(archivo.toString());
+            lenguajeActual.setText(lenguaje);
         } catch (Exception ex) {
             Notification.show("No se pudo abrir: " + ex.getMessage());
         }

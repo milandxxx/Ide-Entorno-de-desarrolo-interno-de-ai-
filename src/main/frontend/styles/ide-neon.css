@@ -1,48 +1,53 @@
-/* Tema "Neon" del IDE: oscuro al estilo IntelliJ con acentos neon y borde RGB animado. */
+/* Tema "Aurora" del IDE: diseño tipo IntelliJ con paleta propia (violeta y turquesa). */
 
 html {
   color-scheme: dark;
 
-  --lumo-base-color: #1a1a24;
-  --lumo-body-text-color: #e8e8f2;
-  --lumo-secondary-text-color: #a6a6bf;
-  --lumo-tertiary-text-color: #7e7e98;
-  --lumo-header-text-color: #e8e8f2;
+  /* Fondos */
+  --lumo-base-color: #2b2d35;
+  --lumo-body-text-color: #dfe1e8;
+  --lumo-secondary-text-color: #a9adbb;
+  --lumo-tertiary-text-color: #7d8193;
+  --lumo-header-text-color: #dfe1e8;
 
+  /* Capas de contraste para bordes, fondos de hover y selecciones */
   --lumo-contrast-5pct: rgba(255, 255, 255, 0.05);
-  --lumo-contrast-10pct: rgba(255, 255, 255, 0.10);
-  --lumo-contrast-20pct: rgba(255, 255, 255, 0.20);
-  --lumo-contrast-30pct: rgba(255, 255, 255, 0.30);
-  --lumo-contrast-50pct: rgba(255, 255, 255, 0.50);
+  --lumo-contrast-10pct: rgba(255, 255, 255, 0.09);
+  --lumo-contrast-20pct: rgba(255, 255, 255, 0.16);
+  --lumo-contrast-30pct: rgba(255, 255, 255, 0.24);
+  --lumo-contrast-50pct: rgba(255, 255, 255, 0.45);
   --lumo-contrast-60pct: rgba(255, 255, 255, 0.60);
   --lumo-contrast-80pct: rgba(255, 255, 255, 0.80);
 
-  --lumo-primary-color: #00e5ff;
-  --lumo-primary-text-color: #00e5ff;
-  --lumo-primary-color-50pct: rgba(0, 229, 255, 0.50);
-  --lumo-primary-color-10pct: rgba(0, 229, 255, 0.10);
-  --lumo-primary-contrast-color: #0b0b12;
+  /* Color principal: violeta */
+  --lumo-primary-color: #8b6cff;
+  --lumo-primary-text-color: #b9a6ff;
+  --lumo-primary-color-50pct: rgba(139, 108, 255, 0.50);
+  --lumo-primary-color-10pct: rgba(139, 108, 255, 0.16);
+  --lumo-primary-contrast-color: #ffffff;
 
-  --neon-rosa: #ff0080;
-  --neon-naranja: #ff8c00;
-  --neon-verde: #40ff00;
-  --neon-cian: #00e5ff;
-  --neon-violeta: #7b2fff;
+  /* Acento: turquesa */
+  --aurora-acento: #2dd4bf;
+  --aurora-acento-suave: rgba(45, 212, 191, 0.20);
+  --aurora-violeta: #8b6cff;
+  --aurora-fondo-oscuro: #1e1f24;
+  --aurora-fondo-panel: #25272e;
 }
 
 body {
   margin: 0;
-  background: #101019;
-  color: #e8e8f2;
+  background: var(--aurora-fondo-oscuro);
+  color: var(--lumo-body-text-color);
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
-/* Barras de menu y herramientas con linea RGB animada debajo. */
+/* Barras superiores (menu y herramientas) con linea degradada animada debajo. */
 .barra-neon,
 .barra-herramientas {
   position: relative;
-  background: #15151f;
+  background: var(--aurora-fondo-panel);
   padding: 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .barra-neon::after,
@@ -51,30 +56,37 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: -1px;
   height: 2px;
   background: linear-gradient(90deg,
-    var(--neon-rosa), var(--neon-naranja), var(--neon-verde),
-    var(--neon-cian), var(--neon-violeta), var(--neon-rosa));
+    var(--aurora-violeta), var(--aurora-acento), var(--aurora-violeta));
   background-size: 200% 100%;
-  animation: rgb-desplazar 4s linear infinite;
-  box-shadow: 0 0 8px var(--neon-cian), 0 0 16px var(--neon-rosa);
+  animation: aurora-desplazar 6s linear infinite;
 }
 
-/* Paneles con borde neon sutil, estilo tool window. */
+/* Paneles tipo tool window: fondo propio y borde fino. */
 .panel-neon {
-  background: #15151f;
-  border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgba(0, 229, 255, 0.25), 0 0 12px rgba(0, 229, 255, 0.10);
+  background: var(--aurora-fondo-panel);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-@keyframes rgb-desplazar {
+/* Barra inferior de estado, como en IntelliJ. */
+.barra-estado {
+  background: var(--aurora-fondo-panel);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2px 10px;
+  font-size: var(--lumo-font-size-s);
+  color: var(--lumo-secondary-text-color);
+  min-height: 24px;
+}
+
+/* Texto de acento para el archivo abierto y la memoria. */
+.texto-neon {
+  color: var(--aurora-acento);
+}
+
+@keyframes aurora-desplazar {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
-}
-
-/* Texto neon para el nombre del archivo abierto. */
-.texto-neon {
-  color: var(--neon-cian);
-  text-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
 }
